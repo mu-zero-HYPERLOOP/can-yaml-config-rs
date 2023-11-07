@@ -162,12 +162,38 @@ pub fn parse_tx_command(
         };
         for callee in callees {
             let yaml_rust::Yaml::String(callee_name) = callee else {
-                return Err(Error::YamlInvalidType(format!("callees have to refered to by name (String)")));
+                return Err(Error::YamlInvalidType(format!(
+                    "callees have to refered to by name (String)"
+                )));
             };
             command_builder.add_callee(callee_name);
         }
     }
 
+    Ok(())
+}
+
+pub fn parse_rx_stream(
+    node_name: &str,
+    stream_name: &str,
+    stream_def: &yaml_rust::Yaml,
+    node_builder: &mut NodeBuilder,
+) -> Result<()> {
+    let rx_stream_builder = node_builder.receive_stream(node_name, stream_name); 
+    
+    //parse stream_def as oe mapping
+    let yaml_rust::Yaml::Hash(map) = stream_def else {
+        return Err(Error::YamlInvalidType(format!("rx_streams have to be defined as maps of oe entries")));
+    };
+    for (tx_oe_name, rx_oe_name) in map {
+        let yaml_rust::Yaml::String(tx_oe_name) = tx_oe_name else {
+            return Err(Error::YamlInvalidType(format!("object entries have to be refered to by name in rx_stream definition")));
+        };
+        let yaml_rust::Yaml::String(rx_oe_name) = rx_oe_name else {
+            return Err(Error::YamlInvalidType(format!("object entries have to be refered to by name in rx_stream definition")));
+        };
+        rx_stream_builder.map(tx_oe_name, rx_oe_name);
+    }
     Ok(())
 }
 
@@ -223,6 +249,34 @@ pub fn parse_node(
         }
     }
 
+    if map.contains_key(&yaml_rust::Yaml::String("rx_streams".to_owned())) {
+        let yaml_rust::Yaml::Hash(rx_node) = &node_map["rx_streams"] else {
+            return Err(Error::YamlInvalidType(format!(
+                "rx_streams have to be defined has maps"
+            )));
+        };
+        for (node_name, tx_node_streams) in rx_node {
+            let yaml_rust::Yaml::String(node_name) = node_name else {
+                return Err(Error::YamlInvalidType(format!(
+                    "rx_streams has to contains the names of the tx_nodes has strings"
+                )));
+            };
+            let yaml_rust::Yaml::Hash(tx_node_streams) = tx_node_streams else {
+                return Err(Error::YamlInvalidType(format!(
+                    "rx_streams has to be a map of names of tx_nodes, which has to be a map of the tx_streams that are received"
+                )));
+            };
+            for (stream_name, stream_def) in tx_node_streams {
+                let yaml_rust::Yaml::String(stream_name) = stream_name else {
+                    return Err(Error::YamlInvalidType(format!(
+                        "stream names have to be defined as strings"
+                    )));
+                };
+                parse_rx_stream(node_name, stream_name, stream_def, &mut node_builder)?;
+            }
+        }
+    }
+
     if map.contains_key(&yaml_rust::Yaml::String("commands".to_owned())) {
         let yaml_rust::Yaml::Hash(commands) = &node_map["commands"] else {
             return Err(Error::YamlInvalidType(format!(
@@ -235,7 +289,7 @@ pub fn parse_node(
                     "the name of a command has to be a string"
                 )));
             };
-            parse_tx_command(command_name,command_def, &mut node_builder)?;
+            parse_tx_command(command_name, command_def, &mut node_builder)?;
         }
     }
     Ok(())

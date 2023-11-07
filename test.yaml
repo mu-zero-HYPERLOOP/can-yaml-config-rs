@@ -36,9 +36,9 @@ nodes:
         type : d8<-10..100>
         access : global
         description : CPU Temperature of the SECU.
-    rx_stream:
+    rx_streams:
       secu:
-        ecu_temperature:
+        ecu_temperatures:
           cpu_temperature : secu_cpu_temperature
           bcu_temperature : secu_bcu_temperature
 
