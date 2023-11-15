@@ -1,6 +1,6 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
-use can_config_rs::config::{Network, NetworkBuilder};
+use can_config_rs::{config::Network, builder::NetworkBuilder};
 use errors::Result;
 
 mod errors;

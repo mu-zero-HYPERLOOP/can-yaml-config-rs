@@ -1,4 +1,5 @@
-use can_config_rs::config::{NetworkBuilder, NodeBuilder, ObjectEntryAccess};
+
+use can_config_rs::{builder::{NodeBuilder, NetworkBuilder}, config::ObjectEntryAccess};
 
 use crate::errors::{Error, Result};
 
