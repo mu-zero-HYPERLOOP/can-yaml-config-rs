@@ -18,7 +18,7 @@ pub fn parse_yaml_config(src : &str) -> Result<Arc<Network>> {
 
     let docs = yaml_rust::yaml::YamlLoader::load_from_str(src)?;
     let doc = &docs[0];
-    println!("{doc:?}");
+    //println!("{doc:?}");
     parser::parse_top_level(doc, &mut network_builder)?;
 
 

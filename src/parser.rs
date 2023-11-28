@@ -1,6 +1,10 @@
 
 use can_config_rs::{builder::{NodeBuilder, NetworkBuilder}, config::ObjectEntryAccess};
 
+use can_config_rs::builder::TypeBuilder;
+
+use can_config_rs::config::Type;
+
 use crate::errors::{Error, Result};
 
 pub fn parse_object_entry(
