@@ -3,7 +3,7 @@ use std::sync::Arc;
 use can_config_rs::{config::Network, builder::NetworkBuilder};
 use errors::Result;
 
-mod errors;
+pub mod errors;
 mod parser;
 
 
