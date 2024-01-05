@@ -110,7 +110,7 @@ pub fn parse_tx_command(
     command_map: &yaml_rust::Yaml,
     node_builder: &mut NodeBuilder,
 ) -> Result<()> {
-    let command_builder = node_builder.create_command(command_name);
+    let command_builder = node_builder.create_command(command_name, None);
 
     let yaml_rust::Yaml::Hash(map) = command_map else {
         return Err(Error::YamlInvalidType(format!(
