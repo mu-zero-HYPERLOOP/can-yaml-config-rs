@@ -1,6 +1,33 @@
 
 baudrate : 10
 
+struct_types:
+  other_struct:
+    just_an_int: simple_number_struct
+  simple_number_struct:
+    first_value: d8<-10..100>
+    second_value: d8<10..100>
+
+enum_types:
+  reply:
+    yes: 2
+    no: 42
+  incomplete_value_enum:
+    one: 5
+    two: 98
+    three: ~
+  no_value_enum:
+    one: ~
+    two: null
+
+buses:
+  bus0:
+    baudrate: 11200
+  bus99:
+    baudrate: 9600
+
+
+
 nodes: 
   secu: 
     description: Sensor Electronics Control Unit
