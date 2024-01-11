@@ -45,7 +45,7 @@ nodes:
     tx_streams:
       ecu_temperatures:
         description : Stream of CPU temperatures of the ECU
-        interval : 10s
+        interval : 100ms - 1s
         mapping:
           - cpu_temperature
           - bcu_temperature

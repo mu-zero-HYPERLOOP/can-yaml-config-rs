@@ -1,11 +1,9 @@
+use std::time::Duration;
+
 use can_config_rs::{
     builder::{bus::BusBuilder, EnumBuilder, NetworkBuilder, NodeBuilder, StructBuilder},
     config::ObjectEntryAccess,
 };
-
-use can_config_rs::builder::TypeBuilder;
-
-use can_config_rs::config::Type;
 
 use crate::errors::{Error, Result};
 
@@ -102,6 +100,67 @@ pub fn parse_tx_stream(
             stream_builder.add_entry(oe_name);
         }
     }
+
+    if map.contains_key(&yaml_rust::Yaml::String("interval".to_owned())) {
+        let yaml_rust::Yaml::String(interval) = &stream_def["interval"] else {
+            return Err(Error::YamlInvalidType(format!(
+                "stream intervals have to be defined has strings"
+            )));
+        };
+
+        let range_interval = regex::Regex::new(
+            r"(?<min>\d+)\s*(?<min_unit>(ms|s))\s*-\s*(?<max>\d+)\s*(?<max_unit>(ms|s))",
+        )
+        .unwrap();
+        match range_interval.captures(interval) {
+            Some(captures) =>{
+                let min = &captures["min"];
+                let min_unit = &captures["min_unit"];
+                let max = &captures["max"];
+                let max_unit = &captures["max_unit"];
+
+                let min : u64 = min.parse().unwrap();
+                let min = if min_unit == "ms" {
+                    Duration::from_millis(min)
+                }else if min_unit == "s" {
+                    Duration::from_secs(min)
+                }else {
+                    panic!()
+                };
+                let max : u64 = max.parse().unwrap();
+                let max = if max_unit == "ms" {
+                    Duration::from_millis(max)
+                }else if max_unit == "s" {
+                    Duration::from_secs(max)
+                }else {
+                    panic!()
+                };
+                stream_builder.set_interval(min, max);
+            },
+            None => {
+                let single_interval = regex::Regex::new(r"(?<x>\d+)\s*(?<unit>(ms|s))").unwrap();
+                match single_interval.captures(interval) {
+                    Some(captures) => {
+                        let interval = &captures["x"];
+                        let unit = &captures["unit"];
+                        let interval : u64 = interval.parse().unwrap();
+                        let interval = if unit == "ms" {
+                            Duration::from_millis(interval)
+                        }else if unit == "s" {
+                            Duration::from_secs(interval)
+                        }else {
+                            panic!()
+                        };
+                        stream_builder.set_interval(interval, interval);
+                    },
+                    None => {
+                        panic!("intervals have to be defined as strings with \"\\d+(ms|s)\"");
+                    }
+                }
+            }
+        }
+    }
+
     // TODO parse interval.
 
     Ok(())
