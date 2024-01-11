@@ -372,13 +372,15 @@ pub fn parse_bus(bus_map: &yaml_rust::Yaml, bus_builder: &mut BusBuilder) -> Res
             "bus must be described by a map"
         )));
     };
-    
-    bus_hash_map.get(&yaml_rust::yaml::Yaml::String("baudrate".to_owned())).map(|yaml| {
-        let yaml_rust::Yaml::Integer(baudrate) = yaml else {
-            panic!("baudrate must be integer value");
-        };
-        bus_builder.baudrate(*baudrate as u32);
-    });
+
+    bus_hash_map
+        .get(&yaml_rust::yaml::Yaml::String("baudrate".to_owned()))
+        .map(|yaml| {
+            let yaml_rust::Yaml::Integer(baudrate) = yaml else {
+                panic!("baudrate must be integer value");
+            };
+            bus_builder.baudrate(*baudrate as u32);
+        });
 
     Ok(())
 }
@@ -405,34 +407,38 @@ pub fn parse_top_level(
         parse_node(name, node_def, network_builder)?;
     }
 
-    let yaml_rust::Yaml::Hash(structs_map) = &yaml["struct_types"] else {
-        return Err(Error::YamlInvalidType(format!(
-            "structs must be given as a map"
-        )));
-    };
-    for (name, struct_map) in structs_map {
-        let yaml_rust::Yaml::String(struct_name) = name else {
+    if yaml["struct_types"].is_null() {
+        let yaml_rust::Yaml::Hash(structs_map) = &yaml["struct_types"] else {
             return Err(Error::YamlInvalidType(format!(
-                "struct names must be primitive string keys"
+                "structs must be given as a map"
             )));
         };
+        for (name, struct_map) in structs_map {
+            let yaml_rust::Yaml::String(struct_name) = name else {
+                return Err(Error::YamlInvalidType(format!(
+                    "struct names must be primitive string keys"
+                )));
+            };
 
-        parse_struct_type(struct_map, &mut network_builder.define_struct(struct_name))?;
+            parse_struct_type(struct_map, &mut network_builder.define_struct(struct_name))?;
+        }
     }
 
-    let yaml_rust::Yaml::Hash(enums_map) = &yaml["enum_types"] else {
-        return Err(Error::YamlInvalidType(format!(
-            "enums must be given as a map"
-        )));
-    };
-    for (name, enum_map) in enums_map {
-        let yaml_rust::Yaml::String(enum_name) = name else {
+    if yaml["enum_types"].is_null() {
+        let yaml_rust::Yaml::Hash(enums_map) = &yaml["enum_types"] else {
             return Err(Error::YamlInvalidType(format!(
-                "struct names must be primitive string keys"
+                "enums must be given as a map"
             )));
         };
+        for (name, enum_map) in enums_map {
+            let yaml_rust::Yaml::String(enum_name) = name else {
+                return Err(Error::YamlInvalidType(format!(
+                    "struct names must be primitive string keys"
+                )));
+            };
 
-        parse_enum_type(enum_map, &mut network_builder.define_enum(enum_name))?;
+            parse_enum_type(enum_map, &mut network_builder.define_enum(enum_name))?;
+        }
     }
 
     let yaml_rust::Yaml::Hash(bus_map) = &yaml["buses"] else {
