@@ -425,7 +425,7 @@ pub fn parse_struct_type(
     Ok(())
 }
 
-pub fn parse_bus(bus_map: &yaml_rust::Yaml, bus_builder: &mut BusBuilder) -> Result<()> {
+pub fn parse_bus(network_builder: &NetworkBuilder, bus_map: &yaml_rust::Yaml, bus_builder: &BusBuilder) -> Result<()> {
     let yaml_rust::Yaml::Hash(bus_hash_map) = bus_map else {
         return Err(Error::YamlInvalidType(format!(
             "bus must be described by a map"
@@ -439,6 +439,17 @@ pub fn parse_bus(bus_map: &yaml_rust::Yaml, bus_builder: &mut BusBuilder) -> Res
                 panic!("baudrate must be integer value");
             };
             bus_builder.baudrate(*baudrate as u32);
+        });
+
+    bus_hash_map.get(&yaml_rust::yaml::Yaml::String("database".to_owned()))
+        .map(|yaml| {
+            let yaml_rust::Yaml::String(path) = yaml else {
+                panic!("database paths have to be strings ending in .dbc");
+            };
+            match network_builder.include_dbc(&bus_builder.0.borrow().name, path) {
+                Ok(_) => (),
+                Err(err) => panic!("Failed to include DBC \n{err:?}"),
+            }
         });
 
     Ok(())
@@ -512,7 +523,7 @@ pub fn parse_top_level(
             )));
         };
 
-        parse_bus(bus_map, &mut network_builder.create_bus(bus_name, None))?;
+        parse_bus(&network_builder, bus_map, &mut network_builder.create_bus(bus_name, None))?;
     }
 
     Ok(())
