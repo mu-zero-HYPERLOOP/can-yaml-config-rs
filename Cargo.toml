@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 can-config-rs = { git = "https://github.com/mu-zero-HYPERLOOP/can-config-rs.git" }
+# can-config-rs = { path = "../can-config-rs/" }
 regex = "1.10.2"
 yaml-rust = "0.4.5"
