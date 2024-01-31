@@ -1,28 +1,13 @@
 
-struct_types:
-  other_struct:
-    just_an_int: simple_number_struct
-  simple_number_struct:
-    first_value: d8<-10..100>
-    second_value: d8<10..100>
-
-enum_types:
-  reply:
-    yes: 2
-    no: 42
-  incomplete_value_enum:
-    one: 5
-    two: 98
-    three: ~
-  no_value_enum:
-    one: ~
-    two: null
 
 buses:
-  bus0:
-    baudrate: 11200
-  bus99:
-    baudrate: 9600
+  can0:
+    baudrate: 1000000
+
+enum_types:
+  test_enum:
+    yes: 2
+    no: 42
 
 
 
@@ -30,45 +15,6 @@ nodes:
   secu: 
     description: Sensor Electronics Control Unit
     object_dictionary:
-      cpu_temperature:
-        type : d8<-10..100>
+      test_oe:
+        type: test_enum
         access : global
-        description : CPU Temperature
-        unit : °C
-      bcu_temperature:
-        type : d8<-10..100>
-        access : global
-        description : BCU Temperature
-        unit : °C
-    tx_streams:
-      ecu_temperatures:
-        description : Stream of CPU temperatures of the ECU
-        interval : 100ms - 1s
-        mapping:
-          - cpu_temperature
-          - bcu_temperature
-    commands:
-      configure_temperatures:
-        description: Samples the temperature multiple times to configure the filters.
-        arguments: 
-          - sample_count: u32
-        callee:
-          - master
-  master:
-    description : Master node running the main state machine
-    object_dictionary:
-      secu_cpu_temperature:
-        type : d8<-10..100>
-        access : global
-        description : CPU Temperature of the SECU.
-    rx_streams:
-      secu:
-        ecu_temperatures:
-          cpu_temperature : secu_cpu_temperature
-          bcu_temperature : secu_bcu_temperature
-
-
-
-      
-
-

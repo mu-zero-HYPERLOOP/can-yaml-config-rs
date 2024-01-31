@@ -477,7 +477,7 @@ pub fn parse_top_level(
         parse_node(name, node_def, network_builder)?;
     }
 
-    if yaml["struct_types"].is_null() {
+    if !yaml["struct_types"].is_null() && !yaml["struct_types"].is_badvalue() {
         let yaml_rust::Yaml::Hash(structs_map) = &yaml["struct_types"] else {
             return Err(Error::YamlInvalidType(format!(
                 "structs must be given as a map"
@@ -494,7 +494,7 @@ pub fn parse_top_level(
         }
     }
 
-    if yaml["enum_types"].is_null() {
+    if !yaml["enum_types"].is_null() && !yaml["enum_types"].is_badvalue() {
         let yaml_rust::Yaml::Hash(enums_map) = &yaml["enum_types"] else {
             return Err(Error::YamlInvalidType(format!(
                 "enums must be given as a map"
