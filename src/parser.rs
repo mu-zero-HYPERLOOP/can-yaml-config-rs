@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use can_config_rs::{
     builder::{bus::BusBuilder, EnumBuilder, NetworkBuilder, NodeBuilder, StructBuilder},
@@ -113,46 +113,46 @@ pub fn parse_tx_stream(
         )
         .unwrap();
         match range_interval.captures(interval) {
-            Some(captures) =>{
+            Some(captures) => {
                 let min = &captures["min"];
                 let min_unit = &captures["min_unit"];
                 let max = &captures["max"];
                 let max_unit = &captures["max_unit"];
 
-                let min : u64 = min.parse().unwrap();
+                let min: u64 = min.parse().unwrap();
                 let min = if min_unit == "ms" {
                     Duration::from_millis(min)
-                }else if min_unit == "s" {
+                } else if min_unit == "s" {
                     Duration::from_secs(min)
-                }else {
+                } else {
                     panic!()
                 };
-                let max : u64 = max.parse().unwrap();
+                let max: u64 = max.parse().unwrap();
                 let max = if max_unit == "ms" {
                     Duration::from_millis(max)
-                }else if max_unit == "s" {
+                } else if max_unit == "s" {
                     Duration::from_secs(max)
-                }else {
+                } else {
                     panic!()
                 };
                 stream_builder.set_interval(min, max);
-            },
+            }
             None => {
                 let single_interval = regex::Regex::new(r"(?<x>\d+)\s*(?<unit>(ms|s))").unwrap();
                 match single_interval.captures(interval) {
                     Some(captures) => {
                         let interval = &captures["x"];
                         let unit = &captures["unit"];
-                        let interval : u64 = interval.parse().unwrap();
+                        let interval: u64 = interval.parse().unwrap();
                         let interval = if unit == "ms" {
                             Duration::from_millis(interval)
-                        }else if unit == "s" {
+                        } else if unit == "s" {
                             Duration::from_secs(interval)
-                        }else {
+                        } else {
                             panic!()
                         };
                         stream_builder.set_interval(interval, interval);
-                    },
+                    }
                     None => {
                         panic!("intervals have to be defined as strings with \"\\d+(ms|s)\"");
                     }
@@ -425,7 +425,11 @@ pub fn parse_struct_type(
     Ok(())
 }
 
-pub fn parse_bus(network_builder: &NetworkBuilder, bus_map: &yaml_rust::Yaml, bus_builder: &BusBuilder) -> Result<()> {
+pub fn parse_bus(
+    network_builder: &NetworkBuilder,
+    bus_map: &yaml_rust::Yaml,
+    bus_builder: &BusBuilder,
+) -> Result<()> {
     let yaml_rust::Yaml::Hash(bus_hash_map) = bus_map else {
         return Err(Error::YamlInvalidType(format!(
             "bus must be described by a map"
@@ -441,7 +445,8 @@ pub fn parse_bus(network_builder: &NetworkBuilder, bus_map: &yaml_rust::Yaml, bu
             bus_builder.baudrate(*baudrate as u32);
         });
 
-    bus_hash_map.get(&yaml_rust::yaml::Yaml::String("database".to_owned()))
+    bus_hash_map
+        .get(&yaml_rust::yaml::Yaml::String("database".to_owned()))
         .map(|yaml| {
             let yaml_rust::Yaml::String(path) = yaml else {
                 panic!("database paths have to be strings ending in .dbc");
@@ -458,32 +463,71 @@ pub fn parse_bus(network_builder: &NetworkBuilder, bus_map: &yaml_rust::Yaml, bu
 pub fn parse_top_level(
     yaml: &yaml_rust::yaml::Yaml,
     network_builder: &mut NetworkBuilder,
+    path: &Path,
 ) -> Result<()> {
     let yaml_rust::Yaml::Hash(_) = yaml else {
         return Err(Error::YamlInvalidFormat(format!("")));
     };
 
-    let yaml_rust::Yaml::Hash(nodes_map) = &yaml["nodes"] else {
-        return Err(Error::YamlInvalidType(format!(
-            "nodes have to be defined as a map"
-        )));
+    let nodes_map = if let yaml_rust::Yaml::String(include_path) = &yaml["nodes"] {
+        let mut buf = path.parent().unwrap().to_path_buf();
+        buf.push(include_path);
+        let path = buf.as_path();
+        let yaml_str = std::fs::read_to_string(&path).expect(&format!("Failed to read {path:?}"));
+        let docs = yaml_rust::yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
+        let doc = &docs[0];
+        doc.as_hash().unwrap().clone()
+    } else {
+        let yaml_rust::Yaml::Hash(nodes_map) = &yaml["nodes"] else {
+            return Err(Error::YamlInvalidType(format!(
+                "enums must be given as a map"
+            )));
+        };
+        nodes_map.clone()
     };
-    for (name, node_def) in nodes_map {
+
+    for (name, node_def) in &nodes_map {
         let yaml_rust::Yaml::String(name) = name else {
             return Err(Error::YamlInvalidType(format!(
                 "name of a node has to be a string"
             )));
         };
-        parse_node(name, node_def, network_builder)?;
+
+        let node_def = if let yaml_rust::Yaml::String(include_path) = node_def {
+            let mut buf = path.parent().unwrap().to_path_buf();
+            buf.push(include_path);
+            let path = buf.as_path();
+            let yaml_str =
+                std::fs::read_to_string(&path).expect(&format!("Failed to read {path:?}"));
+            let docs = yaml_rust::yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
+            let doc = &docs[0];
+            doc.clone()
+        } else {
+            node_def.clone()
+        };
+        parse_node(name, &node_def, network_builder)?;
     }
 
     if !yaml["struct_types"].is_null() && !yaml["struct_types"].is_badvalue() {
-        let yaml_rust::Yaml::Hash(structs_map) = &yaml["struct_types"] else {
-            return Err(Error::YamlInvalidType(format!(
-                "structs must be given as a map"
-            )));
+        let structs_map = if let yaml_rust::Yaml::String(include_path) = &yaml["struct_types"] {
+            let mut buf = path.parent().unwrap().to_path_buf();
+            buf.push(include_path);
+            let path = buf.as_path();
+            let yaml_str =
+                std::fs::read_to_string(&path).expect(&format!("Failed to read {path:?}"));
+            let docs = yaml_rust::yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
+            let doc = &docs[0];
+            doc.as_hash().unwrap().clone()
+        } else {
+            let yaml_rust::Yaml::Hash(structs_map) = &yaml["struct_types"] else {
+                return Err(Error::YamlInvalidType(format!(
+                    "enums must be given as a map"
+                )));
+            };
+            structs_map.clone()
         };
-        for (name, struct_map) in structs_map {
+
+        for (name, struct_map) in &structs_map {
             let yaml_rust::Yaml::String(struct_name) = name else {
                 return Err(Error::YamlInvalidType(format!(
                     "struct names must be primitive string keys"
@@ -495,12 +539,25 @@ pub fn parse_top_level(
     }
 
     if !yaml["enum_types"].is_null() && !yaml["enum_types"].is_badvalue() {
-        let yaml_rust::Yaml::Hash(enums_map) = &yaml["enum_types"] else {
-            return Err(Error::YamlInvalidType(format!(
-                "enums must be given as a map"
-            )));
+        let enums_map = if let yaml_rust::Yaml::String(include_path) = &yaml["enum_types"] {
+            let mut buf = path.parent().unwrap().to_path_buf();
+            buf.push(include_path);
+            let path = buf.as_path();
+            let yaml_str =
+                std::fs::read_to_string(&path).expect(&format!("Failed to read {path:?}"));
+            let docs = yaml_rust::yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
+            let doc = &docs[0];
+            doc.as_hash().unwrap().clone()
+        } else {
+            let yaml_rust::Yaml::Hash(enums_map) = &yaml["enum_types"] else {
+                return Err(Error::YamlInvalidType(format!(
+                    "enums must be given as a map"
+                )));
+            };
+            enums_map.clone()
         };
-        for (name, enum_map) in enums_map {
+
+        for (name, enum_map) in &enums_map {
             let yaml_rust::Yaml::String(enum_name) = name else {
                 return Err(Error::YamlInvalidType(format!(
                     "struct names must be primitive string keys"
@@ -511,19 +568,35 @@ pub fn parse_top_level(
         }
     }
 
-    let yaml_rust::Yaml::Hash(bus_map) = &yaml["buses"] else {
-        return Err(Error::YamlInvalidType(format!(
-            "buses must be given as a map"
-        )));
+    let bus_map = if let yaml_rust::Yaml::String(include_path) = &yaml["buses"] {
+        let mut buf = path.parent().unwrap().to_path_buf();
+        buf.push(include_path);
+        let path = buf.as_path();
+        let yaml_str = std::fs::read_to_string(&path).expect(&format!("Failed to read {path:?}"));
+        let docs = yaml_rust::yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
+        let doc = &docs[0];
+        doc.as_hash().unwrap().clone()
+    } else {
+        let yaml_rust::Yaml::Hash(buses) = &yaml["buses"] else {
+            return Err(Error::YamlInvalidType(format!(
+                "enums must be given as a map"
+            )));
+        };
+        buses.clone()
     };
-    for (name, bus_map) in bus_map {
+
+    for (name, bus_map) in &bus_map {
         let yaml_rust::Yaml::String(bus_name) = name else {
             return Err(Error::YamlInvalidType(format!(
                 "bus names must be primitive string keys"
             )));
         };
 
-        parse_bus(&network_builder, bus_map, &mut network_builder.create_bus(bus_name, None))?;
+        parse_bus(
+            &network_builder,
+            bus_map,
+            &mut network_builder.create_bus(bus_name, None),
+        )?;
     }
 
     Ok(())
