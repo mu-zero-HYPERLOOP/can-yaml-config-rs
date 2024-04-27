@@ -1,4 +1,7 @@
-use std::{path::Path, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use can_config_rs::{
     builder::{bus::BusBuilder, EnumBuilder, NetworkBuilder, NodeBuilder, StructBuilder},
@@ -53,9 +56,11 @@ pub fn parse_object_entry(
         let access = access.to_lowercase();
         if access == "const" {
             oe_builder.set_access(ObjectEntryAccess::Const);
-        } else if access == "local" {
+        } else if access == "local" || access == "readonly" || access == "static" {
             oe_builder.set_access(ObjectEntryAccess::Local);
-        } else if access == "global" {
+        } else if access == "global" || access == "readwrite" {
+            oe_builder.set_access(ObjectEntryAccess::Global);
+        } else if access == "extern" || access == "external" {
             oe_builder.set_access(ObjectEntryAccess::Global);
         }
     }
@@ -600,4 +605,66 @@ pub fn parse_top_level(
     }
 
     Ok(())
+}
+
+pub fn parse_included_files(yaml: &yaml_rust::yaml::Yaml, path: &Path) -> Result<Vec<PathBuf>> {
+    let mut paths = vec![];
+
+    let yaml_rust::Yaml::Hash(_) = yaml else {
+        return Err(Error::YamlInvalidFormat(format!("")));
+    };
+
+    let nodes_map = if let yaml_rust::Yaml::String(include_path) = &yaml["nodes"] {
+        let mut buf = path.parent().unwrap().to_path_buf();
+        buf.push(include_path);
+        let path = buf.as_path();
+        paths.push(path.to_path_buf());
+        let yaml_str = std::fs::read_to_string(&path).expect(&format!("Failed to read {path:?}"));
+        let docs = yaml_rust::yaml::YamlLoader::load_from_str(&yaml_str).unwrap();
+        let doc = &docs[0];
+        doc.as_hash().unwrap().clone()
+    } else {
+        let yaml_rust::Yaml::Hash(nodes_map) = &yaml["nodes"] else {
+            return Err(Error::YamlInvalidType(format!(
+                "enums must be given as a map"
+            )));
+        };
+        nodes_map.clone()
+    };
+
+    for (_, node_def) in &nodes_map {
+        if let yaml_rust::Yaml::String(include_path) = node_def {
+            let mut buf = path.parent().unwrap().to_path_buf();
+            buf.push(include_path);
+            let path = buf.as_path();
+            paths.push(path.to_path_buf());
+        };
+    }
+
+    if !yaml["struct_types"].is_null() && !yaml["struct_types"].is_badvalue() {
+        if let yaml_rust::Yaml::String(include_path) = &yaml["struct_types"] {
+            let mut buf = path.parent().unwrap().to_path_buf();
+            buf.push(include_path);
+            let path = buf.as_path();
+            paths.push(path.to_path_buf());
+        };
+    }
+
+    if !yaml["enum_types"].is_null() && !yaml["enum_types"].is_badvalue() {
+        if let yaml_rust::Yaml::String(include_path) = &yaml["enum_types"] {
+            let mut buf = path.parent().unwrap().to_path_buf();
+            buf.push(include_path);
+            let path = buf.as_path();
+            paths.push(path.to_path_buf());
+        };
+    }
+
+    if let yaml_rust::Yaml::String(include_path) = &yaml["buses"] {
+        let mut buf = path.parent().unwrap().to_path_buf();
+        buf.push(include_path);
+        let path = buf.as_path();
+        paths.push(path.to_path_buf());
+    };
+
+    Ok(paths)
 }

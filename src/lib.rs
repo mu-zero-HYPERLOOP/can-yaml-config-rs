@@ -3,6 +3,8 @@ use std::{path::{Path, PathBuf}, str::FromStr, sync::Arc};
 use can_config_rs::{config::Network, builder::NetworkBuilder};
 use errors::Result;
 
+use crate::parser::parse_included_files;
+
 pub mod errors;
 mod parser;
 
@@ -26,4 +28,11 @@ pub fn parse_yaml_config(src : &str, path : &Path) -> Result<Arc<Network>> {
 
     let network = network_builder.build()?;
     Ok(network)
+}
+
+pub fn parse_yaml_config_files(src :&str, path: &Path) -> Result<Vec<PathBuf>> {
+
+    let docs = yaml_rust::yaml::YamlLoader::load_from_str(src)?;
+    let doc = &docs[0];
+    parse_included_files(doc, path)
 }
