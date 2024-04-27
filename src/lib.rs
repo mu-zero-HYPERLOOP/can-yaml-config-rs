@@ -30,6 +30,12 @@ pub fn parse_yaml_config(src : &str, path : &Path) -> Result<Arc<Network>> {
     Ok(network)
 }
 
+pub fn parse_yaml_config_files_from_file(path: &str) -> Result<Vec<PathBuf>> {
+    let path = PathBuf::from_str(path).unwrap();
+    let src = std::fs::read_to_string(&path)?;
+    parse_yaml_config_files(&src, path.as_path())
+}
+
 pub fn parse_yaml_config_files(src :&str, path: &Path) -> Result<Vec<PathBuf>> {
 
     let docs = yaml_rust::yaml::YamlLoader::load_from_str(src)?;
