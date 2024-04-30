@@ -1,12 +1,12 @@
 [package]
-name = "can-yaml-config-rs"
+name = "canzero-yaml"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-can-config-rs = { git = "https://github.com/mu-zero-HYPERLOOP/can-config-rs.git" }
+canzero-config = { git = "https://github.com/mu-zero-HYPERLOOP/canzero-config.git" }
 # can-config-rs = { path = "../can-config-rs/" }
 regex = "1.10.2"
 yaml-rust = "0.4.5"
