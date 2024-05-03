@@ -6,7 +6,7 @@ pub enum Error {
     YamlScanError(yaml_rust::ScanError),
     YamlInvalidFormat(String),
     YamlInvalidType(String),
-    ConfigError(can_config_rs::errors::ConfigError),
+    ConfigError(canzero_config::errors::ConfigError),
     Io(std::io::Error),
 }
 
@@ -16,8 +16,8 @@ impl From<yaml_rust::ScanError> for Error {
     }
 }
 
-impl From<can_config_rs::errors::ConfigError> for Error {
-    fn from(value: can_config_rs::errors::ConfigError) -> Self {
+impl From<canzero_config::errors::ConfigError> for Error {
+    fn from(value: canzero_config::errors::ConfigError) -> Self {
         Error::ConfigError(value)
     }
 }

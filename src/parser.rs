@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use can_config_rs::{
+use canzero_config::{
     builder::{bus::BusBuilder, EnumBuilder, NetworkBuilder, NodeBuilder, StructBuilder},
     config::ObjectEntryAccess,
 };
